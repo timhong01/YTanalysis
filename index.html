@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube 頻道深度分析 (進階策略版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-gradient: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 960px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--panel-border);
+            color: white;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.8rem;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-gradient);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+
+        .dashboard {
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .social-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .social-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .social-ig {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            color: white;
+        }
+
+        .social-tk {
+            background: #000000;
+            color: white;
+            border: 1px solid #00f2fe;
+        }
+
+        .social-fb {
+            background: #1877f2;
+            color: white;
+        }
+
+        .social-th {
+            background: #000000;
+            color: white;
+            border: 1px solid white;
+        }
+
+        .social-x {
+            background: #000000;
+            color: white;
+            border: 1px solid #71767b;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1.2rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--panel-border);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        th {
+            color: var(--text-muted);
+            transition: color 0.2s;
+            user-select: none;
+        }
+
+        th:hover {
+            color: white;
+            cursor: pointer;
+        }
+
+        .tag-short {
+            background: #8b5cf6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .tag-video {
+            background: #3b82f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .sort-icon {
+            font-size: 0.8em;
+            margin-left: 4px;
+            color: var(--accent);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="glass-panel" style="height: fit-content;">
+            <h2>頻道深度分析</h2>
+            <div class="form-group">
+                <label>YouTube API Key</label>
+                <input type="password" id="apiKey" placeholder="輸入 API Key">
+            </div>
+            <div class="form-group">
+                <label>頻道 ID 或 Handle</label>
+                <input type="text" id="handle" value="@gaoweirenzhi">
+            </div>
+            <div class="form-group">
+                <label>分析時間範圍</label>
+                <select id="timeRange">
+                    <option value="7">最近 7 天的影片</option>
+                    <option value="30" selected>最近 30 天的影片</option>
+                    <option value="90">最近 90 天的影片</option>
+                    <option value="all">系統上限 (最近 500 部)</option>
+                </select>
+            </div>
+            <button id="startBtn" onclick="startAnalysis()">開始抓取與分析</button>
+            <div id="statusText" style="margin-top: 1rem; color: #10b981; font-size: 0.9rem;"></div>
+
+            <div class="glass-panel"
+                style="margin-top: 2rem; background: rgba(239, 68, 68, 0.1); border-color: var(--danger);">
+                <h3 style="color: var(--danger); font-size: 1rem;">⚠️ API 限制提醒</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+                    1. <b>無法取得歷史增長曲線</b>（如每天增加多少訂閱），API 僅提供「當下」的總數。<br>
+                    2. <b>無法取得 Community Posts (社群貼文)</b>。<br>
+                    3. <b>沒有 Share (分享) 數據</b>。<br>
+                    此工具透過「互動率 (按讚+留言/觀看)」與「影片長度」來幫您找出高潛力的影片策略。
+                </p>
+            </div>
+        </div>
+
+        <div class="dashboard" id="dashboard">
+            <div class="glass-panel">
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <img id="cAvatar" src="" style="width: 80px; border-radius: 50%;">
+                    <div>
+                        <h2 id="cTitle" style="margin-bottom: 0.2rem;">頻道名稱</h2>
+                        <div id="socialLinks" class="social-tags" style="margin-bottom: 0.5rem;"></div>
+                        <p id="timeFilterDesc" style="color: var(--warning); font-size: 0.85rem;"></p>
+                        <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.3rem;">*
+                            警語：社群標籤為系統自動從「頻道簡介」擷取之文字，可能不齊全或為其他平台連結。</p>
+                    </div>
+                </div>
+                <div class="stats-grid" style="margin-top: 1.5rem;">
+                    <div class="stat-card">
+                        <div class="stat-value" id="sSubs">0</div>
+                        <div class="stat-label">當下總訂閱</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="sViews">0</div>
+                        <div class="stat-label">當下總觀看</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="sVids">0</div>
+                        <div class="stat-label">區間內發布數</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="sAvgEngRate">0%</div>
+                        <div class="stat-label">區間平均互動率</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="glass-panel">
+                    <h3>內容類型比例 (Shorts vs 一般影片)</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">判定標準：片長 ≤ 3 分鐘為
+                        Shorts，> 3 分鐘為 Video</p>
+                    <div class="chart-container"><canvas id="typeChart"></canvas></div>
+                </div>
+                <div class="glass-panel">
+                    <h3>高互動影片特徵 (觀看次數 vs 互動率)</h3>
+                    <div class="chart-container"><canvas id="scatterChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <h3>區間內發布趨勢 (以日為單位)</h3>
+                <div class="chart-container" style="height: 250px;"><canvas id="timelineChart"></canvas></div>
+            </div>
+
+            <div class="glass-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>策略分析清單 <span
+                            style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(點擊標題可排序)</span>
+                    </h3>
+                    <button onclick="downloadCSV()" style="width: auto; padding: 0.5rem 1rem; background: #10b981;">⬇️
+                        下載資料</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table id="dataTable">
+                        <thead>
+                            <tr>
+                                <th onclick="sortData('date')">發布日 <span id="sort_date" class="sort-icon"></span></th>
+                                <th onclick="sortData('type')">類型 <span id="sort_type" class="sort-icon"></span></th>
+                                <th onclick="sortData('title')">標題 <span id="sort_title" class="sort-icon"></span></th>
+                                <th onclick="sortData('dur')">時長 <span id="sort_dur" class="sort-icon"></span></th>
+                                <th onclick="sortData('views')">觀看 <span id="sort_views" class="sort-icon"></span></th>
+                                <th onclick="sortData('engRate')" style="color: white;">互動率(讚+留/看) <span
+                                        id="sort_engRate" class="sort-icon">▼</span></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalData = [];
+        let charts = {};
+        let currentSortCol = 'engRate';
+        let currentSortDir = -1; // -1: 降冪, 1: 升冪
+
+        function parseDuration(pt) {
+            const match = pt.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+            if (!match) return 0;
+            return (parseInt(match[1] || 0) * 3600) + (parseInt(match[2] || 0) * 60) + parseInt(match[3] || 0);
+        }
+
+        async function fetchAPI(url) {
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error.message);
+            return data;
+        }
+
+        async function startAnalysis() {
+            const key = document.getElementById('apiKey').value;
+            const handle = document.getElementById('handle').value;
+            const days = document.getElementById('timeRange').value;
+            const btn = document.getElementById('startBtn');
+            const status = document.getElementById('statusText');
+
+            if (!key || !handle) return alert("請輸入 API Key 與頻道 ID");
+
+            btn.disabled = true;
+            document.getElementById('dashboard').style.display = 'none';
+
+            try {
+                status.innerText = "1/3 獲取頻道指標...";
+                let chUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&key=${key}&${handle.startsWith('@') ? 'forHandle=' : 'id='}${handle}`;
+                const chData = await fetchAPI(chUrl);
+                if (!chData.items) throw new Error("找不到頻道");
+
+                const ch = chData.items[0];
+                const pid = ch.contentDetails.relatedPlaylists.uploads;
+
+                document.getElementById('cAvatar').src = ch.snippet.thumbnails.high.url;
+                document.getElementById('cTitle').innerText = ch.snippet.title;
+                document.getElementById('sSubs').innerText = parseInt(ch.statistics.subscriberCount).toLocaleString();
+                document.getElementById('sViews').innerText = parseInt(ch.statistics.viewCount).toLocaleString();
+
+                // 社群平台偵測 (從 Description)
+                const desc = (ch.snippet.description || "").toLowerCase();
+                const socialDiv = document.getElementById('socialLinks');
+                socialDiv.innerHTML = '';
+
+                const platforms = [
+                    { key: 'instagram.com', name: 'Instagram', class: 'social-ig' },
+                    { key: 'tiktok.com', name: 'TikTok', class: 'social-tk' },
+                    { key: 'facebook.com', name: 'Facebook', class: 'social-fb' },
+                    { key: 'threads.net', name: 'Threads', class: 'social-th' },
+                    { key: 'twitter.com', name: 'X (Twitter)', class: 'social-x' },
+                    { key: 'x.com', name: 'X', class: 'social-x' }
+                ];
+
+                let foundAny = false;
+                platforms.forEach(p => {
+                    if (desc.includes(p.key)) {
+                        const span = document.createElement('span');
+                        span.className = `social-tag ${p.class}`;
+                        span.innerText = p.name;
+                        socialDiv.appendChild(span);
+                        foundAny = true;
+                    }
+                });
+                if (!foundAny) {
+                    const span = document.createElement('span');
+                    span.className = 'social-tag';
+                    span.style.background = 'rgba(255,255,255,0.1)';
+                    span.innerText = '簡介無外部連結';
+                    socialDiv.appendChild(span);
+                }
+
+                const cutoffDate = new Date();
+                if (days !== 'all') {
+                    cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
+                    document.getElementById('timeFilterDesc').innerText = `分析區間：過往 ${days} 天 (${cutoffDate.toLocaleDateString()} 至今)`;
+                } else {
+                    cutoffDate.setFullYear(2000);
+                    document.getElementById('timeFilterDesc').innerText = `分析區間：系統上限 (最新 500 支影片)`;
+                }
+
+                status.innerText = "2/3 獲取區間內影片清單 (這可能需要幾秒鐘)...";
+                let vids = [];
+                let npt = "";
+                let stopFetching = false;
+
+                while (!stopFetching && vids.length < 500) {
+                    let pUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails,snippet&maxResults=50&playlistId=${pid}&key=${key}`;
+                    if (npt) pUrl += `&pageToken=${npt}`;
+
+                    const pData = await fetchAPI(pUrl);
+                    if (!pData.items) break;
+
+                    for (let item of pData.items) {
+                        const pubDate = new Date(item.snippet.publishedAt);
+                        if (pubDate < cutoffDate) {
+                            stopFetching = true; break;
+                        }
+                        vids.push(item.contentDetails.videoId);
+                    }
+                    npt = pData.nextPageToken;
+                    if (!npt) break;
+                }
+
+                if (vids.length === 0) throw new Error("該區間內沒有發布任何影片");
+
+                status.innerText = `3/3 分析 ${vids.length} 支影片的數據...`;
+                globalData = [];
+
+                for (let i = 0; i < vids.length; i += 50) {
+                    const chunk = vids.slice(i, i + 50).join(',');
+                    const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${chunk}&key=${key}`;
+                    const vData = await fetchAPI(vUrl);
+
+                    vData.items.forEach(v => {
+                        const views = parseInt(v.statistics.viewCount || 0);
+                        const likes = parseInt(v.statistics.likeCount || 0);
+                        const comments = parseInt(v.statistics.commentCount || 0);
+                        const dur = parseDuration(v.contentDetails.duration);
+
+                        // 演算法：大於 180 秒 (3分鐘) 為 Video，小於等於為 Short
+                        const type = dur <= 180 ? 'Short' : 'Video';
+                        const engRate = views > 0 ? ((likes + comments) / views * 100) : 0;
+
+                        globalData.push({
+                            id: v.id,
+                            title: v.snippet.title,
+                            date: new Date(v.snippet.publishedAt),
+                            dur: dur,
+                            type: type,
+                            views: views,
+                            likes: likes,
+                            comments: comments,
+                            engRate: engRate
+                        });
+                    });
+                }
+
+                document.getElementById('sVids').innerText = globalData.length;
+                const avgEng = globalData.reduce((acc, curr) => acc + curr.engRate, 0) / globalData.length;
+                document.getElementById('sAvgEngRate').innerText = avgEng.toFixed(2) + '%';
+
+                renderCharts();
+                // 預設排序為互動率降冪
+                currentSortCol = 'engRate';
+                currentSortDir = -1;
+                renderTable();
+
+                status.innerText = "分析完成！";
+                document.getElementById('dashboard').style.display = 'flex';
+
+            } catch (e) {
+                status.innerText = "錯誤: " + e.message;
+                status.style.color = "var(--danger)";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderCharts() {
+            ['typeChart', 'scatterChart', 'timelineChart'].forEach(id => {
+                if (charts[id]) charts[id].destroy();
+            });
+
+            Chart.defaults.color = '#94a3b8';
+
+            // 1. Shorts vs Video (以 3 分鐘為界)
+            let sCount = 0, vCount = 0;
+            globalData.forEach(d => d.type === 'Short' ? sCount++ : vCount++);
+
+            charts['typeChart'] = new Chart(document.getElementById('typeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Shorts (≤3分鐘)', '一般 Video (>3分鐘)'],
+                    datasets: [{ data: [sCount, vCount], backgroundColor: ['#8b5cf6', '#3b82f6'], borderWidth: 0 }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            // 2. Scatter
+            charts['scatterChart'] = new Chart(document.getElementById('scatterChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Shorts',
+                            data: globalData.filter(d => d.type === 'Short').map(d => ({ x: d.views, y: d.engRate, raw: d })),
+                            backgroundColor: '#8b5cf6'
+                        },
+                        {
+                            label: 'Video',
+                            data: globalData.filter(d => d.type === 'Video').map(d => ({ x: d.views, y: d.engRate, raw: d })),
+                            backgroundColor: '#3b82f6'
+                        }
+                    ]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: '觀看次數' }, type: 'logarithmic' },
+                        y: { title: { display: true, text: '互動率 (%)' } }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const d = ctx.raw.raw;
+                                    return `${d.title.substring(0, 20)}... | 觀看:${d.views} | 互動:${d.engRate.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 3. Timeline 分拆 Shorts 與 Video
+            const timelineObj = {};
+            globalData.forEach(d => {
+                const dateStr = `${d.date.getMonth() + 1}/${d.date.getDate()}`;
+                if (!timelineObj[dateStr]) timelineObj[dateStr] = { Short: 0, Video: 0 };
+                timelineObj[dateStr][d.type]++;
+            });
+
+            const sortedDates = Object.keys(timelineObj).sort((a, b) => {
+                const [m1, d1] = a.split('/'); const [m2, d2] = b.split('/');
+                if (m1 !== m2) return parseInt(m1) - parseInt(m2); return parseInt(d1) - parseInt(d2);
+            });
+
+            charts['timelineChart'] = new Chart(document.getElementById('timelineChart'), {
+                type: 'line',
+                data: {
+                    labels: sortedDates,
+                    datasets: [
+                        {
+                            label: 'Shorts 發布量',
+                            data: sortedDates.map(k => timelineObj[k].Short),
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Video 發布量',
+                            data: sortedDates.map(k => timelineObj[k].Video),
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: { maintainAspectRatio: false }
+            });
+        }
+
+        function sortData(col) {
+            if (currentSortCol === col) {
+                currentSortDir *= -1; // 點擊相同欄位，切換升降冪
+            } else {
+                currentSortCol = col;
+                currentSortDir = -1; // 預設降冪
+            }
+            renderTable();
+        }
+
+        function renderTable() {
+            // 更新標題樣式與圖示
+            ['date', 'type', 'title', 'dur', 'views', 'engRate'].forEach(col => {
+                const th = document.getElementById(`sort_${col}`).parentElement;
+                const span = document.getElementById(`sort_${col}`);
+                if (col === currentSortCol) {
+                    th.style.color = "white";
+                    span.innerText = currentSortDir === 1 ? '▲' : '▼';
+                } else {
+                    th.style.color = "var(--text-muted)";
+                    span.innerText = '';
+                }
+            });
+
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = '';
+
+            // 依照所選欄位與方向排序資料
+            const sorted = [...globalData].sort((a, b) => {
+                let valA = a[currentSortCol];
+                let valB = b[currentSortCol];
+
+                if (currentSortCol === 'title' || currentSortCol === 'type') {
+                    valA = valA.toString().toLowerCase();
+                    valB = valB.toString().toLowerCase();
+                }
+
+                if (valA < valB) return -1 * currentSortDir;
+                if (valA > valB) return 1 * currentSortDir;
+                return 0;
+            });
+
+            sorted.forEach(d => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td>${d.date.toLocaleDateString()}</td>
+                <td><span class="tag-${d.type.toLowerCase()}">${d.type}</span></td>
+                <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${d.title}">
+                    <a href="https://youtu.be/${d.id}" target="_blank" style="color:white;">${d.title}</a>
+                </td>
+                <td>${Math.floor(d.dur / 60)}:${(d.dur % 60).toString().padStart(2, '0')}</td>
+                <td>${d.views.toLocaleString()}</td>
+                <td style="color: #10b981; font-weight: bold;">${d.engRate.toFixed(2)}%</td>
+            `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function downloadCSV() {
+            if (!globalData.length) return;
+            const BOM = "\uFEFF";
+            let csv = "ID,發布時間,類型,標題,長度(秒),觀看次數,按讚數,留言數,互動率(%)\n";
+            globalData.forEach(d => {
+                csv += `${d.id},${d.date.toISOString()},${d.type},"${d.title.replace(/"/g, '""')}",${d.dur},${d.views},${d.likes},${d.comments},${d.engRate.toFixed(2)}\n`;
+            });
+            const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `channel_strategy_${Date.now()}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+
+</html>
