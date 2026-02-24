@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube 頻道分析神器</title>
+    <!-- 引入 Chart.js 用於數據視覺化 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.6);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        h1, h2, h3 {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            width: 100%;
+        }
+
+        /* 表單元素 */
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            width: 100%;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-gradient);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+
+        /* 儀表板區域 */
+        .dashboard {
+            display: none; /* 預設隱藏，有資料才顯示 */
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .channel-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .channel-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid var(--accent);
+            object-fit: cover;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--panel-border);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.2rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        /* 影片表格 */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 500;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent);
+        }
+
+        .error {
+            color: var(--danger);
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 左側面板：設定與控制 -->
+        <div class="glass-panel" style="height: fit-content;">
+            <h2>設定參數</h2>
+            <div class="form-group">
+                <label for="apiKey">YouTube API Key</label>
+                <input type="password" id="apiKey" placeholder="請貼上您的 API Key">
+            </div>
+            <div class="form-group">
+                <label for="handle">頻道 ID 或 Handle</label>
+                <input type="text" id="handle" value="@gaoweirenzhi" placeholder="例如 @gaoweirenzhi">
+            </div>
+            <div class="form-group">
+                <label for="maxVideos">最多分析影片數量</label>
+                <input type="number" id="maxVideos" value="100" min="10" max="500">
+            </div>
+            <button id="startBtn" onclick="startAnalysis()">開始分析</button>
+            <div id="statusText" class="status"></div>
+            <div id="errorText" class="error"></div>
+            
+            <button id="downloadBtn" style="margin-top: 1rem; display: none; background: #10b981;" onclick="downloadCSV()">⬇️ 下載 CSV 分析報告</button>
+        </div>
+
+        <!-- 右側面板：結果展示 -->
+        <div class="dashboard" id="dashboard">
+            <!-- 頻道資訊 -->
+            <div class="glass-panel">
+                <div class="channel-header">
+                    <img id="channelAvatar" class="channel-avatar" src="" alt="Avatar">
+                    <div>
+                        <h2 id="channelTitle">頻道名稱</h2>
+                        <p id="channelDesc" style="color: var(--text-muted); font-size: 0.9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"></p>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="statSubs">0</div>
+                                <div class="stat-label">總訂閱數</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="statViews">0</div>
+                                <div class="stat-label">總觀看數</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="statVideos">0</div>
+                                <div class="stat-label">總影片數</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 圖表區 -->
+            <div class="glass-panel" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div style="width: 100%;">
+                    <h3>觀看次數前 5 名</h3>
+                    <div class="chart-container">
+                        <canvas id="viewsChart"></canvas>
+                    </div>
+                </div>
+                <div style="width: 100%;">
+                    <h3>發布時間分析 (星期)</h3>
+                    <div class="chart-container">
+                        <canvas id="daysChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 數據表格 -->
+            <div class="glass-panel">
+                <h3>最新影片數據</h3>
+                <div class="table-container">
+                    <table id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>發布日期</th>
+                                <th>影片標題</th>
+                                <th>時長</th>
+                                <th>觀看次數</th>
+                                <th>按讚數</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 動態插入 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalVideoData = []; // 儲存所有影片資料供 CSV 下載
+        let myChart1 = null;
+        let myChart2 = null;
+
+        function showStatus(text, isError = false) {
+            const statusEl = document.getElementById('statusText');
+            const errorEl = document.getElementById('errorText');
+            if (isError) {
+                errorEl.innerText = text;
+                statusEl.innerText = '';
+            } else {
+                statusEl.innerText = text;
+                errorEl.innerText = '';
+            }
+        }
+
+        // 解析 ISO 8601 時長 PT1H2M10S
+        function parseDuration(duration) {
+            const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+            if (!match) return 0;
+            const hours = parseInt(match[1] || 0);
+            const minutes = parseInt(match[2] || 0);
+            const seconds = parseInt(match[3] || 0);
+            return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        function formatSeconds(sec) {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        async function fetchAPI(url) {
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error.message);
+            return data;
+        }
+
+        async function startAnalysis() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const handle = document.getElementById('handle').value.trim();
+            const maxVideos = parseInt(document.getElementById('maxVideos').value) || 100;
+            
+            if (!apiKey) return showStatus("錯誤：請輸入 API Key", true);
+            if (!handle) return showStatus("錯誤：請輸入頻道 ID 或是 Handle", true);
+
+            const btn = document.getElementById('startBtn');
+            btn.disabled = true;
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('downloadBtn').style.display = 'none';
+            globalVideoData = [];
+
+            try {
+                showStatus("取得頻道資訊中...");
+                // 1. 取得頻道資訊
+                let channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&key=${apiKey}`;
+                if (handle.startsWith('@')) {
+                    channelUrl += `&forHandle=${handle}`;
+                } else {
+                    channelUrl += `&id=${handle}`;
+                }
+                
+                const channelData = await fetchAPI(channelUrl);
+                if (!channelData.items || channelData.items.length === 0) {
+                    throw new Error("找不到該頻道");
+                }
+
+                const channel = channelData.items[0];
+                const uploadsPlaylistId = channel.contentDetails.relatedPlaylists.uploads;
+
+                // 更新 UI
+                document.getElementById('channelAvatar').src = channel.snippet.thumbnails.high.url;
+                document.getElementById('channelTitle').innerText = channel.snippet.title;
+                document.getElementById('channelDesc').innerText = channel.snippet.description;
+                document.getElementById('statSubs').innerText = parseInt(channel.statistics.subscriberCount).toLocaleString();
+                document.getElementById('statViews').innerText = parseInt(channel.statistics.viewCount).toLocaleString();
+                document.getElementById('statVideos').innerText = parseInt(channel.statistics.videoCount).toLocaleString();
+
+                // 2. 獲取播放清單影片 ID
+                showStatus("抓取影片列表中...");
+                let videoIds = [];
+                let nextPageToken = "";
+                
+                while(videoIds.length < maxVideos) {
+                    let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId=${uploadsPlaylistId}&key=${apiKey}`;
+                    if (nextPageToken) playlistUrl += `&pageToken=${nextPageToken}`;
+                    
+                    const playlistData = await fetchAPI(playlistUrl);
+                    if (!playlistData.items || playlistData.items.length === 0) break;
+                    
+                    playlistData.items.forEach(item => {
+                        videoIds.push(item.contentDetails.videoId);
+                    });
+                    
+                    nextPageToken = playlistData.nextPageToken;
+                    if (!nextPageToken) break;
+                }
+
+                if (videoIds.length > maxVideos) videoIds = videoIds.slice(0, maxVideos);
+
+                // 3. 獲取影片詳細數據
+                showStatus(`取得 ${videoIds.length} 支影片的數據中...`);
+                let allVideoStats = [];
+                
+                // 每次最多查詢 50 筆
+                for (let i = 0; i < videoIds.length; i += 50) {
+                    const chunk = videoIds.slice(i, i + 50).join(',');
+                    const videosUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${chunk}&key=${apiKey}`;
+                    const videoData = await fetchAPI(videosUrl);
+                    
+                    if (videoData.items) {
+                        videoData.items.forEach(v => {
+                            allVideoStats.push({
+                                id: v.id,
+                                title: v.snippet.title,
+                                publishedAt: new Date(v.snippet.publishedAt),
+                                durationSec: parseDuration(v.contentDetails.duration),
+                                viewCount: parseInt(v.statistics.viewCount || 0),
+                                likeCount: parseInt(v.statistics.likeCount || 0),
+                                commentCount: parseInt(v.statistics.commentCount || 0)
+                            });
+                        });
+                    }
+                }
+
+                globalVideoData = allVideoStats;
+                renderDashboard(allVideoStats);
+                
+                showStatus("分析完成！");
+                document.getElementById('dashboard').style.display = 'flex';
+                document.getElementById('downloadBtn').style.display = 'block';
+
+            } catch (err) {
+                showStatus(err.message, true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderDashboard(videos) {
+            // 繪製表格
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = '';
+            
+            // 取前 20 筆顯示在表格就好，避免過長
+            videos.slice(0, 20).forEach(v => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${v.publishedAt.toLocaleDateString()}</td>
+                    <td style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${v.title}">
+                        <a href="https://youtube.com/watch?v=${v.id}" target="_blank" style="color:var(--accent); text-decoration:none;">${v.title}</a>
+                    </td>
+                    <td>${formatSeconds(v.durationSec)}</td>
+                    <td>${v.viewCount.toLocaleString()}</td>
+                    <td>${v.likeCount.toLocaleString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 準備圖表資料
+            const sortedByViews = [...videos].sort((a,b) => b.viewCount - a.viewCount).slice(0, 5);
+            
+            Chart.defaults.color = '#94a3b8';
+
+            // 銷毀舊圖表
+            if(myChart1) myChart1.destroy();
+            if(myChart2) myChart2.destroy();
+
+            // 圖表1：觀看次數前5名
+            const ctx1 = document.getElementById('viewsChart').getContext('2d');
+            myChart1 = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: sortedByViews.map(v => v.title.length > 20 ? v.title.substring(0,20)+'...' : v.title),
+                    datasets: [{
+                        label: '觀看次數',
+                        data: sortedByViews.map(v => v.viewCount),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // 圖表2：發布星期幾分析
+            const daysCount = [0,0,0,0,0,0,0]; // 日, 一, 二, 三, 四, 五, 六
+            videos.forEach(v => {
+                daysCount[v.publishedAt.getDay()]++;
+            });
+
+            const ctx2 = document.getElementById('daysChart').getContext('2d');
+            myChart2 = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'],
+                    datasets: [{
+                        label: '發布影片數',
+                        data: daysCount,
+                        backgroundColor: '#8b5cf6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function downloadCSV() {
+            if (globalVideoData.length === 0) return;
+
+            const BOM = "\uFEFF"; // 加入 UTF-8 BOM 解決 Excel 亂碼
+            let csvContent = "Video ID,標題,發布時間,長度(秒),觀看次數,按讚數,留言數\n";
+            
+            globalVideoData.forEach(v => {
+                // 處理標題中的逗號與引號，用雙引號包起來
+                const safeTitle = `"${v.title.replace(/"/g, '""')}"`;
+                const dateStr = v.publishedAt.toISOString();
+                csvContent += `${v.id},${safeTitle},${dateStr},${v.durationSec},${v.viewCount},${v.likeCount},${v.commentCount}\n`;
+            });
+
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `youtube_channel_data_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
