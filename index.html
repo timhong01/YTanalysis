@@ -382,6 +382,87 @@
             margin: 0 0 1rem 0;
             color: #333;
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(9, 30, 66, 0.54);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            border-radius: 3px;
+            box-shadow: 0 8px 16px -4px rgba(9, 30, 66, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 2px solid #dfe1e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafbfc;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #172b4d;
+        }
+
+        .modal-close {
+            cursor: pointer;
+            color: #5e6c84;
+            font-size: 1.5rem;
+            line-height: 1;
+            border: none;
+            background: transparent;
+        }
+
+        .modal-close:hover {
+            color: #172b4d;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            color: #172b4d;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .interactive-badge {
+            background: #ebecf0;
+            color: #42526e;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #dfe1e6;
+        }
+
+        .interactive-badge:hover {
+            background: #dfe1e6;
+            color: #172b4d;
+        }
     </style>
 </head>
 
@@ -488,6 +569,22 @@
                         <div class="stat-value" id="sAvgEngRate">0%</div>
                         <div class="stat-label">Avg Eng. Rate</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="sPlaylists">0</div>
+                        <div class="stat-label">Playlists Count</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="sCountry"
+                            style="font-size: 1.2rem; display: flex; align-items: center; justify-content: center; height: 100%;">
+                            N/A</div>
+                        <div class="stat-label">Country</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="sCreated"
+                            style="font-size: 1rem; display: flex; align-items: center; justify-content: center; height: 100%;">
+                            N/A</div>
+                        <div class="stat-label">Created At</div>
+                    </div>
                 </div>
             </div>
 
@@ -522,9 +619,11 @@
                     <table id="dataTable">
                         <thead>
                             <tr>
+                                <th onclick="sortData('category')">Category <span id="sort_category"
+                                        class="sort-icon"></span></th>
+                                <th onclick="sortData('hasCC')">CC <span id="sort_hasCC" class="sort-icon"></span></th>
                                 <th onclick="sortData('date')">Published (Local Time) <span id="sort_date"
-                                        class="sort-icon"></span>
-                                </th>
+                                        class="sort-icon"></span></th>
                                 <th onclick="sortData('type')">Type <span id="sort_type" class="sort-icon"></span></th>
                                 <th onclick="sortData('title')">Title <span id="sort_title" class="sort-icon"></span>
                                 </th>
@@ -532,6 +631,8 @@
                                 </th>
                                 <th onclick="sortData('views')">Views <span id="sort_views" class="sort-icon"></span>
                                 </th>
+                                <th>Tags</th>
+                                <th>Desc.</th>
                                 <th onclick="sortData('engRate')" style="background: #e6fcff; color: #006eb8;">Eng. Rate
                                     <span id="sort_engRate" class="sort-icon">▼</span>
                                 </th>
@@ -588,6 +689,13 @@
                 document.getElementById('cTitle').innerText = ch.snippet.title;
                 document.getElementById('sSubs').innerText = parseInt(ch.statistics.subscriberCount).toLocaleString();
                 document.getElementById('sViews').innerText = parseInt(ch.statistics.viewCount).toLocaleString();
+
+                // New Channel Metrics
+                const pUrls = `https://www.googleapis.com/youtube/v3/playlists?part=id&channelId=${ch.id}&maxResults=50&key=${key}`;
+                const pDataCount = await fetchAPI(pUrls).catch(() => ({ pageInfo: { totalResults: 0 } }));
+                document.getElementById('sPlaylists').innerText = pDataCount.pageInfo ? pDataCount.pageInfo.totalResults : 0;
+                document.getElementById('sCountry').innerText = ch.snippet.country || 'N/A';
+                document.getElementById('sCreated').innerText = new Date(ch.snippet.publishedAt).toLocaleDateString();
 
                 const desc = (ch.snippet.description || "").toLowerCase();
                 const socialDiv = document.getElementById('socialLinks');
@@ -653,7 +761,15 @@
 
                 if (vids.length === 0) throw new Error("No videos found in this period");
 
-                status.innerText = `3/3 Analyzing ${vids.length} videos...`;
+                status.innerText = `3/4 Fetching video categories...`;
+                const catUrl = `https://www.googleapis.com/youtube/v3/videoCategories?part=snippet&regionCode=US&key=${key}`;
+                const catData = await fetchAPI(catUrl).catch(() => ({ items: [] }));
+                const categoryMap = {};
+                if (catData.items) {
+                    catData.items.forEach(c => { categoryMap[c.id] = c.snippet.title; });
+                }
+
+                status.innerText = `4/4 Analyzing ${vids.length} videos...`;
                 globalData = [];
 
                 for (let i = 0; i < vids.length; i += 50) {
@@ -670,6 +786,12 @@
                         const type = dur <= 180 ? 'Short' : 'Video';
                         const engRate = views > 0 ? ((likes + comments) / views * 100) : 0;
 
+                        const tags = v.snippet.tags || [];
+                        const description = v.snippet.description || "";
+                        const categoryId = v.snippet.categoryId || "";
+                        const categoryName = categoryMap[categoryId] || categoryId;
+                        const hasCC = v.contentDetails.caption === "true" ? "Yes" : "No";
+
                         globalData.push({
                             id: v.id,
                             title: v.snippet.title,
@@ -679,7 +801,11 @@
                             views: views,
                             likes: likes,
                             comments: comments,
-                            engRate: engRate
+                            engRate: engRate,
+                            category: categoryName,
+                            hasCC: hasCC,
+                            tags: tags,
+                            description: description
                         });
                     });
                 }
@@ -809,9 +935,10 @@
         }
 
         function renderTable() {
-            ['date', 'type', 'title', 'dur', 'views', 'engRate'].forEach(col => {
-                const th = document.getElementById(`sort_${col}`).parentElement;
+            ['category', 'hasCC', 'date', 'type', 'title', 'dur', 'views', 'engRate'].forEach(col => {
                 const span = document.getElementById(`sort_${col}`);
+                if (!span) return;
+                const th = span.parentElement;
                 if (col === currentSortCol) {
                     th.style.background = "#ebecf0";
                     th.style.color = "#172b4d";
@@ -846,6 +973,8 @@
                 const dateStr = `${d.date.getFullYear()}/${pad(d.date.getMonth() + 1)}/${pad(d.date.getDate())} ${pad(d.date.getHours())}:${pad(d.date.getMinutes())}`;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+            <td>${d.category}</td>
+            <td>${d.hasCC}</td>
             <td>${dateStr}</td>
             <td><span class="tag-${d.type.toLowerCase()}">${d.type}</span></td>
             <td style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${d.title}">
@@ -853,6 +982,12 @@
             </td>
             <td>${Math.floor(d.dur / 60)}:${(d.dur % 60).toString().padStart(2, '0')}</td>
             <td>${d.views.toLocaleString()}</td>
+            <td>
+                <span class="interactive-badge" onclick="openModal('Tags (${d.tags.length})', '${(d.tags.join(', ') || 'No tags').replace(/'/g, "\\'")}')">${d.tags.length} Tags</span>
+            </td>
+            <td>
+                <span class="interactive-badge" onclick="openModal('Description', \`${(d.description || 'No description').replace(/`/g, "\\`")}\`)">${d.description.length} Chars</span>
+            </td>
             <td style="color: #172b4d; font-weight: 500;">${d.engRate.toFixed(2)}%</td>
         `;
                 tbody.appendChild(tr);
@@ -862,9 +997,9 @@
         function downloadCSV() {
             if (!globalData.length) return;
             const BOM = "\uFEFF";
-            let csv = "ID,Published,Type,Title,Duration(s),Views,Likes,Comments,EngRate(%)\n";
+            let csv = "ID,Category,HasCC,Published,Type,Title,Duration(s),Views,Likes,Comments,TagsCount,DescriptionLength,EngRate(%)\n";
             globalData.forEach(d => {
-                csv += `${d.id},${d.date.toISOString()},${d.type},"${d.title.replace(/"/g, '""')}",${d.dur},${d.views},${d.likes},${d.comments},${d.engRate.toFixed(2)}\n`;
+                csv += `${d.id},"${d.category}",${d.hasCC},${d.date.toISOString()},${d.type},"${d.title.replace(/"/g, '""')}",${d.dur},${d.views},${d.likes},${d.comments},${d.tags.length},${d.description.length},${d.engRate.toFixed(2)}\n`;
             });
             const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
@@ -873,6 +1008,33 @@
             link.click();
         }
     </script>
+
+    <!-- Popup Modal -->
+    <div id="infoModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Information</div>
+                <button class="modal-close" onclick="closeModal(event)">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(title, content) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalBody').innerText = content || 'No content provided.';
+            document.getElementById('infoModal').style.display = 'flex';
+        }
+
+        function closeModal(e) {
+            if (e) e.stopPropagation();
+            document.getElementById('infoModal').style.display = 'none';
+        }
+    </script>
+
 </body>
 
 </html>
