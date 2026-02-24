@@ -522,7 +522,8 @@
                     <table id="dataTable">
                         <thead>
                             <tr>
-                                <th onclick="sortData('date')">Published <span id="sort_date" class="sort-icon"></span>
+                                <th onclick="sortData('date')">Published (Local Time) <span id="sort_date"
+                                        class="sort-icon"></span>
                                 </th>
                                 <th onclick="sortData('type')">Type <span id="sort_type" class="sort-icon"></span></th>
                                 <th onclick="sortData('title')">Title <span id="sort_title" class="sort-icon"></span>
@@ -841,9 +842,11 @@
             });
 
             sorted.forEach(d => {
+                const pad = n => n.toString().padStart(2, '0');
+                const dateStr = `${d.date.getFullYear()}/${pad(d.date.getMonth() + 1)}/${pad(d.date.getDate())} ${pad(d.date.getHours())}:${pad(d.date.getMinutes())}`;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-            <td>${d.date.toLocaleDateString()}</td>
+            <td>${dateStr}</td>
             <td><span class="tag-${d.type.toLowerCase()}">${d.type}</span></td>
             <td style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${d.title}">
                 <a href="https://youtu.be/${d.id}" target="_blank" style="color:#0052cc; text-decoration:none;">${d.title}</a>
