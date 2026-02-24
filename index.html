@@ -4,28 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube 頻道深度分析 (進階策略版)</title>
+    <title>OpenChat Request - YT Analyzer Integration</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600&display=swap');
 
         :root {
-            --bg-color: #0f172a;
-            --panel-bg: rgba(30, 41, 59, 0.7);
-            --panel-border: rgba(255, 255, 255, 0.1);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent: #3b82f6;
-            --accent-gradient: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-            --danger: #ef4444;
-            --warning: #f59e0b;
+            --bg-color: #ffffff;
+            --panel-bg: #ffffff;
+            --panel-border: #dfe1e6;
+            --text-main: #172b4d;
+            --text-muted: #5e6c84;
+            --accent: #0052cc;
+            --danger: #de350b;
+            --warning: #ff991f;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Inter', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         body {
@@ -34,16 +33,29 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+        }
+
+        .header-bar {
+            background: #0052cc;
+            color: white;
+            padding: 0.6rem 1.5rem;
+            display: flex;
             align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
 
         .container {
             width: 100%;
             max-width: 1400px;
             padding: 2rem;
+            margin: 0 auto;
             display: grid;
             grid-template-columns: 320px 1fr;
             gap: 2rem;
+            align-items: start;
         }
 
         @media (max-width: 960px) {
@@ -55,25 +67,40 @@
         .glass-panel {
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
-            border-radius: 16px;
+            border-radius: 3px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            box-shadow: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+        }
+
+        h2 {
+            font-size: 1.5rem;
         }
 
         h1,
         h2,
-        h3 {
-            font-weight: 600;
+        h3,
+        h4 {
+            font-weight: 500;
             margin-bottom: 1rem;
+            color: var(--text-main);
         }
 
         h1 {
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-align: center;
+            text-align: left;
             margin: 1rem 0;
+            font-size: 1.8rem;
+            letter-spacing: -0.01em;
+        }
+
+        .page-title-row {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 1rem;
+            margin-bottom: -1rem;
         }
 
         .form-group {
@@ -82,47 +109,68 @@
 
         label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
             color: var(--text-muted);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 600;
         }
 
         input,
         select {
             width: 100%;
-            padding: 0.75rem;
-            border-radius: 8px;
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid var(--panel-border);
-            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 3px;
+            background: #fafbfc;
+            border: 2px solid #dfe1e6;
+            color: var(--text-main);
             outline: none;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #4c9aff;
+            background: #fff;
         }
 
         button {
             width: 100%;
-            padding: 0.8rem;
-            border-radius: 8px;
+            padding: 0.6rem;
+            border-radius: 3px;
             border: none;
-            background: var(--accent-gradient);
+            background: var(--accent);
             color: white;
-            font-weight: bold;
+            font-weight: 500;
             cursor: pointer;
             transition: 0.2s;
+            font-size: 0.9rem;
         }
 
         button:hover {
-            opacity: 0.9;
+            background: #0047b3;
         }
 
         button:disabled {
-            background: #475569;
+            background: rgba(9, 30, 66, 0.04);
+            color: #a5adba;
             cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: rgba(9, 30, 66, 0.04);
+            color: #42526e;
+            font-weight: 500;
+        }
+
+        button.secondary:hover {
+            background: rgba(9, 30, 66, 0.08);
         }
 
         .dashboard {
             display: none;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0;
         }
 
         .stats-grid {
@@ -131,72 +179,33 @@
             gap: 1rem;
         }
 
-        .social-tags {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-top: 0.5rem;
-        }
-
-        .social-tag {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .social-ig {
-            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-            color: white;
-        }
-
-        .social-tk {
-            background: #000000;
-            color: white;
-            border: 1px solid #00f2fe;
-        }
-
-        .social-fb {
-            background: #1877f2;
-            color: white;
-        }
-
-        .social-th {
-            background: #000000;
-            color: white;
-            border: 1px solid white;
-        }
-
-        .social-x {
-            background: #000000;
-            color: white;
-            border: 1px solid #71767b;
-        }
-
         .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 1.2rem;
-            border-radius: 12px;
+            background: #f4f5f7;
+            padding: 1rem;
+            border-radius: 3px;
             text-align: center;
             border: 1px solid var(--panel-border);
         }
 
         .stat-value {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #3b82f6;
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--text-main);
         }
 
         .stat-label {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
-            margin-top: 5px;
+            margin-top: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
         }
 
         .charts-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1.5rem;
+            margin-bottom: 1.5rem;
         }
 
         @media (max-width: 1200px) {
@@ -213,45 +222,128 @@
 
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 0.9rem;
+            border: 1px solid var(--panel-border);
+            border-radius: 3px;
         }
 
         th,
         td {
             text-align: left;
-            padding: 0.75rem;
+            padding: 0.6rem 1rem;
             border-bottom: 1px solid var(--panel-border);
         }
 
         th {
+            background: #f4f5f7;
             color: var(--text-muted);
-            transition: color 0.2s;
-            user-select: none;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s;
         }
 
         th:hover {
-            color: white;
-            cursor: pointer;
+            background: #ebecf0;
+            color: var(--text-main);
+        }
+
+        tbody tr:hover {
+            background: #fafbfc;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
         }
 
         .tag-short {
-            background: #8b5cf6;
+            background: #eaeaeb;
+            color: #42526e;
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: 3px;
             font-size: 0.75rem;
+            font-weight: 600;
         }
 
         .tag-video {
-            background: #3b82f6;
+            background: #deebff;
+            color: #0052cc;
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: 3px;
             font-size: 0.75rem;
+            font-weight: 600;
         }
 
         .sort-icon {
             font-size: 0.8em;
             margin-left: 4px;
+            color: var(--text-muted);
+        }
+
+        .social-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .social-tag {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .social-ig {
+            background: #ffeceb;
+            color: #bf2600;
+        }
+
+        .social-tk {
+            background: #eaeaeb;
+            color: #42526e;
+        }
+
+        .social-fb {
+            background: #deebff;
+            color: #0052cc;
+        }
+
+        .social-th {
+            background: #eaeaeb;
+            color: #42526e;
+        }
+
+        .social-x {
+            background: #eaeaeb;
+            color: #42526e;
+        }
+
+        .social-none {
+            background: #f4f5f7;
+            color: #a5adba;
+            border: 1px solid #dfe1e6;
+        }
+
+        .wiki-breadcrumb {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            grid-column: 1 / -1;
+            margin-bottom: -1rem;
+        }
+
+        .wiki-breadcrumb span {
+            cursor: pointer;
+        }
+
+        .wiki-breadcrumb span:hover {
+            text-decoration: underline;
             color: var(--accent);
         }
     </style>
@@ -259,110 +351,153 @@
 
 <body>
 
+    <div class="header-bar">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div
+                style="font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 4H10V10H4V4Z" fill="white" />
+                    <path d="M14 4H20V10H14V4Z" fill="white" />
+                    <path d="M4 14H10V20H4V14Z" fill="white" />
+                    <path d="M14 14H20V20H14V14Z" fill="white" />
+                </svg>
+                Confluence
+            </div>
+            <div style="display: flex; gap: 1.5rem; font-size: 0.9rem; margin-left: 1.5rem;">
+                <span style="cursor: pointer; opacity: 0.9;">Spaces ▾</span>
+                <span style="cursor: pointer; opacity: 0.9;">People</span>
+                <span
+                    style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 3px; cursor: pointer; font-weight: 500;">Create</span>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <input type="text" placeholder="Search"
+                style="width: 200px; padding: 4px 8px; border: 1px solid rgba(255,255,255,0.4); background: rgba(9,30,66,0.2); color: white; border-radius: 3px;">
+        </div>
+    </div>
+
     <div class="container">
-        <div class="glass-panel" style="height: fit-content;">
-            <h2>頻道深度分析</h2>
+        <div class="wiki-breadcrumb">
+            <span>Pages</span> / <span>...</span> / <span>FY25 TW OpenChat Requirement</span>
+        </div>
+
+        <div class="page-title-row">
+            <h1>(WIP) OpenChat Request (ORT) - TW - Social radar integration</h1>
+        </div>
+
+        <!-- 左側面板：設定與控制 (類似 Confluence 巨集側邊欄) -->
+        <div class="glass-panel" style="background: #f4f5f7; border: none; padding: 1.2rem;">
+            <h3 style="font-size: 0.9rem; color: #5e6c84; text-transform: uppercase;">Radar Settings</h3>
+            <div style="height: 1px; background: #dfe1e6; margin: 0.5rem 0 1rem 0;"></div>
+
             <div class="form-group">
                 <label>YouTube API Key</label>
-                <input type="password" id="apiKey" placeholder="輸入 API Key">
+                <input type="password" id="apiKey" placeholder="Enter API Key">
             </div>
             <div class="form-group">
-                <label>頻道 ID 或 Handle</label>
+                <label>Target Channel Handle</label>
                 <input type="text" id="handle" value="@gaoweirenzhi">
             </div>
             <div class="form-group">
-                <label>分析時間範圍</label>
+                <label>Timeframe</label>
                 <select id="timeRange">
-                    <option value="7">最近 7 天的影片</option>
-                    <option value="30" selected>最近 30 天的影片</option>
-                    <option value="90">最近 90 天的影片</option>
-                    <option value="all">系統上限 (最近 500 部)</option>
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="all">Max Limit (500 videos)</option>
                 </select>
             </div>
-            <button id="startBtn" onclick="startAnalysis()">開始抓取與分析</button>
-            <div id="statusText" style="margin-top: 1rem; color: #10b981; font-size: 0.9rem;"></div>
+            <button id="startBtn" onclick="startAnalysis()">Run Integration</button>
+            <div id="statusText" style="margin-top: 1rem; color: #0052cc; font-size: 0.85rem; font-weight: 500;"></div>
 
-            <div class="glass-panel"
-                style="margin-top: 2rem; background: rgba(239, 68, 68, 0.1); border-color: var(--danger);">
-                <h3 style="color: var(--danger); font-size: 1rem;">⚠️ API 限制提醒</h3>
-                <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
-                    1. <b>無法取得歷史增長曲線</b>（如每天增加多少訂閱），API 僅提供「當下」的總數。<br>
-                    2. <b>無法取得 Community Posts (社群貼文)</b>。<br>
-                    3. <b>沒有 Share (分享) 數據</b>。<br>
-                    此工具透過「互動率 (按讚+留言/觀看)」與「影片長度」來幫您找出高潛力的影片策略。
+            <div
+                style="margin-top: 1.5rem; padding: 1rem; background: #ffebe6; border-left: 3px solid var(--danger); border-radius: 3px;">
+                <h4 style="color: var(--danger); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase;">
+                    ⚠️ Data Limitations</h4>
+                <p style="font-size: 0.8rem; color: var(--text-main); line-height: 1.4;">
+                    1. <b>No historical growth curve</b> (API only returns current static count).<br>
+                    2. <b>No Community Posts</b> access.<br>
+                    3. <b>No Share counts</b> via public API.<br>
                 </p>
             </div>
         </div>
 
+        <!-- 右側面板：結果展示 -->
         <div class="dashboard" id="dashboard">
             <div class="glass-panel">
-                <div style="display: flex; gap: 1rem; align-items: center;">
-                    <img id="cAvatar" src="" style="width: 80px; border-radius: 50%;">
-                    <div>
-                        <h2 id="cTitle" style="margin-bottom: 0.2rem;">頻道名稱</h2>
-                        <div id="socialLinks" class="social-tags" style="margin-bottom: 0.5rem;"></div>
-                        <p id="timeFilterDesc" style="color: var(--warning); font-size: 0.85rem;"></p>
-                        <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.3rem;">*
-                            警語：社群標籤為系統自動從「頻道簡介」擷取之文字，可能不齊全或為其他平台連結。</p>
+                <h3
+                    style="margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--panel-border);">
+                    Channel Overview</h3>
+                <div style="display: flex; gap: 1.5rem; align-items: flex-start;">
+                    <img id="cAvatar" src=""
+                        style="width: 80px; height: 80px; border-radius: 3px; border: 1px solid var(--panel-border);">
+                    <div style="flex: 1;">
+                        <h2 id="cTitle" style="margin-bottom: 0.3rem;">Channel Name</h2>
+                        <p id="timeFilterDesc" style="color: var(--text-muted); font-size: 0.85rem;"></p>
+                        <div id="socialLinks" class="social-tags" style="margin-bottom: 0;"></div>
                     </div>
                 </div>
                 <div class="stats-grid" style="margin-top: 1.5rem;">
                     <div class="stat-card">
                         <div class="stat-value" id="sSubs">0</div>
-                        <div class="stat-label">當下總訂閱</div>
+                        <div class="stat-label">Total Subs</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="sViews">0</div>
-                        <div class="stat-label">當下總觀看</div>
+                        <div class="stat-label">Total Views</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="sVids">0</div>
-                        <div class="stat-label">區間內發布數</div>
+                        <div class="stat-label">Vids in Period</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="sAvgEngRate">0%</div>
-                        <div class="stat-label">區間平均互動率</div>
+                        <div class="stat-label">Avg Eng. Rate</div>
                     </div>
                 </div>
             </div>
 
             <div class="charts-row">
                 <div class="glass-panel">
-                    <h3>內容類型比例 (Shorts vs 一般影片)</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">判定標準：片長 ≤ 3 分鐘為
-                        Shorts，> 3 分鐘為 Video</p>
+                    <h3 style="font-size: 1rem;">Content Type Distribution</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Threshold: ≤ 3 mins
+                        (Shorts), > 3 mins (Video)</p>
                     <div class="chart-container"><canvas id="typeChart"></canvas></div>
                 </div>
                 <div class="glass-panel">
-                    <h3>高互動影片特徵 (觀看次數 vs 互動率)</h3>
+                    <h3 style="font-size: 1rem;">Engagement Radar</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Performance outliers
+                        (Views vs. Eng Rate)</p>
                     <div class="chart-container"><canvas id="scatterChart"></canvas></div>
                 </div>
             </div>
 
-            <div class="glass-panel">
-                <h3>區間內發布趨勢 (以日為單位)</h3>
+            <div class="glass-panel" style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1rem;">Upload Timeline</h3>
                 <div class="chart-container" style="height: 250px;"><canvas id="timelineChart"></canvas></div>
             </div>
 
             <div class="glass-panel">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3>策略分析清單 <span
-                            style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(點擊標題可排序)</span>
-                    </h3>
-                    <button onclick="downloadCSV()" style="width: auto; padding: 0.5rem 1rem; background: #10b981;">⬇️
-                        下載資料</button>
+                    <h3 style="font-size: 1rem; margin: 0;">Strategy Detail Matrix</h3>
+                    <button class="secondary" onclick="downloadCSV()"
+                        style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Export CSV</button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table id="dataTable">
                         <thead>
                             <tr>
-                                <th onclick="sortData('date')">發布日 <span id="sort_date" class="sort-icon"></span></th>
-                                <th onclick="sortData('type')">類型 <span id="sort_type" class="sort-icon"></span></th>
-                                <th onclick="sortData('title')">標題 <span id="sort_title" class="sort-icon"></span></th>
-                                <th onclick="sortData('dur')">時長 <span id="sort_dur" class="sort-icon"></span></th>
-                                <th onclick="sortData('views')">觀看 <span id="sort_views" class="sort-icon"></span></th>
-                                <th onclick="sortData('engRate')" style="color: white;">互動率(讚+留/看) <span
-                                        id="sort_engRate" class="sort-icon">▼</span></th>
+                                <th onclick="sortData('date')">Published <span id="sort_date" class="sort-icon"></span>
+                                </th>
+                                <th onclick="sortData('type')">Type <span id="sort_type" class="sort-icon"></span></th>
+                                <th onclick="sortData('title')">Title <span id="sort_title" class="sort-icon"></span>
+                                </th>
+                                <th onclick="sortData('dur')">Duration <span id="sort_dur" class="sort-icon"></span>
+                                </th>
+                                <th onclick="sortData('views')">Views <span id="sort_views" class="sort-icon"></span>
+                                </th>
+                                <th onclick="sortData('engRate')" style="background: #e6fcff; color: #006eb8;">Eng. Rate
+                                    <span id="sort_engRate" class="sort-icon">▼</span></th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -376,7 +511,7 @@
         let globalData = [];
         let charts = {};
         let currentSortCol = 'engRate';
-        let currentSortDir = -1; // -1: 降冪, 1: 升冪
+        let currentSortDir = -1;
 
         function parseDuration(pt) {
             const match = pt.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -398,16 +533,16 @@
             const btn = document.getElementById('startBtn');
             const status = document.getElementById('statusText');
 
-            if (!key || !handle) return alert("請輸入 API Key 與頻道 ID");
+            if (!key || !handle) return alert("請輸入 API Key 與頻道 ID / Please enter API Key and Channel ID");
 
             btn.disabled = true;
             document.getElementById('dashboard').style.display = 'none';
 
             try {
-                status.innerText = "1/3 獲取頻道指標...";
+                status.innerText = "1/3 Fetching channel metrics...";
                 let chUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&key=${key}&${handle.startsWith('@') ? 'forHandle=' : 'id='}${handle}`;
                 const chData = await fetchAPI(chUrl);
-                if (!chData.items) throw new Error("找不到頻道");
+                if (!chData.items) throw new Error("Channel not found");
 
                 const ch = chData.items[0];
                 const pid = ch.contentDetails.relatedPlaylists.uploads;
@@ -417,7 +552,6 @@
                 document.getElementById('sSubs').innerText = parseInt(ch.statistics.subscriberCount).toLocaleString();
                 document.getElementById('sViews').innerText = parseInt(ch.statistics.viewCount).toLocaleString();
 
-                // 社群平台偵測 (從 Description)
                 const desc = (ch.snippet.description || "").toLowerCase();
                 const socialDiv = document.getElementById('socialLinks');
                 socialDiv.innerHTML = '';
@@ -443,22 +577,21 @@
                 });
                 if (!foundAny) {
                     const span = document.createElement('span');
-                    span.className = 'social-tag';
-                    span.style.background = 'rgba(255,255,255,0.1)';
-                    span.innerText = '簡介無外部連結';
+                    span.className = 'social-tag social-none';
+                    span.innerText = 'No external links detected';
                     socialDiv.appendChild(span);
                 }
 
                 const cutoffDate = new Date();
                 if (days !== 'all') {
                     cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
-                    document.getElementById('timeFilterDesc').innerText = `分析區間：過往 ${days} 天 (${cutoffDate.toLocaleDateString()} 至今)`;
+                    document.getElementById('timeFilterDesc').innerText = `Period: Last ${days} days (${cutoffDate.toLocaleDateString()} ~ Now)`;
                 } else {
                     cutoffDate.setFullYear(2000);
-                    document.getElementById('timeFilterDesc').innerText = `分析區間：系統上限 (最新 500 支影片)`;
+                    document.getElementById('timeFilterDesc').innerText = `Period: Max Limit (Last 500 videos)`;
                 }
 
-                status.innerText = "2/3 獲取區間內影片清單 (這可能需要幾秒鐘)...";
+                status.innerText = "2/3 Retrieving video list...";
                 let vids = [];
                 let npt = "";
                 let stopFetching = false;
@@ -481,9 +614,9 @@
                     if (!npt) break;
                 }
 
-                if (vids.length === 0) throw new Error("該區間內沒有發布任何影片");
+                if (vids.length === 0) throw new Error("No videos found in this period");
 
-                status.innerText = `3/3 分析 ${vids.length} 支影片的數據...`;
+                status.innerText = `3/3 Analyzing ${vids.length} videos...`;
                 globalData = [];
 
                 for (let i = 0; i < vids.length; i += 50) {
@@ -497,7 +630,6 @@
                         const comments = parseInt(v.statistics.commentCount || 0);
                         const dur = parseDuration(v.contentDetails.duration);
 
-                        // 演算法：大於 180 秒 (3分鐘) 為 Video，小於等於為 Short
                         const type = dur <= 180 ? 'Short' : 'Video';
                         const engRate = views > 0 ? ((likes + comments) / views * 100) : 0;
 
@@ -520,16 +652,15 @@
                 document.getElementById('sAvgEngRate').innerText = avgEng.toFixed(2) + '%';
 
                 renderCharts();
-                // 預設排序為互動率降冪
                 currentSortCol = 'engRate';
                 currentSortDir = -1;
                 renderTable();
 
-                status.innerText = "分析完成！";
+                status.innerText = "Integration Complete ✅";
                 document.getElementById('dashboard').style.display = 'flex';
 
             } catch (e) {
-                status.innerText = "錯誤: " + e.message;
+                status.innerText = "Error: " + e.message;
                 status.style.color = "var(--danger)";
             } finally {
                 btn.disabled = false;
@@ -541,22 +672,21 @@
                 if (charts[id]) charts[id].destroy();
             });
 
-            Chart.defaults.color = '#94a3b8';
+            // Set default text color to dark for light theme
+            Chart.defaults.color = '#5e6c84';
 
-            // 1. Shorts vs Video (以 3 分鐘為界)
             let sCount = 0, vCount = 0;
             globalData.forEach(d => d.type === 'Short' ? sCount++ : vCount++);
 
             charts['typeChart'] = new Chart(document.getElementById('typeChart'), {
                 type: 'doughnut',
                 data: {
-                    labels: ['Shorts (≤3分鐘)', '一般 Video (>3分鐘)'],
-                    datasets: [{ data: [sCount, vCount], backgroundColor: ['#8b5cf6', '#3b82f6'], borderWidth: 0 }]
+                    labels: ['Shorts (≤3m)', 'Video (>3m)'],
+                    datasets: [{ data: [sCount, vCount], backgroundColor: ['#FF8F73', '#0052CC'], borderWidth: 0 }]
                 },
                 options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
             });
 
-            // 2. Scatter
             charts['scatterChart'] = new Chart(document.getElementById('scatterChart'), {
                 type: 'scatter',
                 data: {
@@ -564,27 +694,27 @@
                         {
                             label: 'Shorts',
                             data: globalData.filter(d => d.type === 'Short').map(d => ({ x: d.views, y: d.engRate, raw: d })),
-                            backgroundColor: '#8b5cf6'
+                            backgroundColor: '#FF8F73'
                         },
                         {
                             label: 'Video',
                             data: globalData.filter(d => d.type === 'Video').map(d => ({ x: d.views, y: d.engRate, raw: d })),
-                            backgroundColor: '#3b82f6'
+                            backgroundColor: '#0052CC'
                         }
                     ]
                 },
                 options: {
                     maintainAspectRatio: false,
                     scales: {
-                        x: { title: { display: true, text: '觀看次數' }, type: 'logarithmic' },
-                        y: { title: { display: true, text: '互動率 (%)' } }
+                        x: { title: { display: true, text: 'Views' }, type: 'logarithmic' },
+                        y: { title: { display: true, text: 'Engagement Rate (%)' } }
                     },
                     plugins: {
                         tooltip: {
                             callbacks: {
                                 label: (ctx) => {
                                     const d = ctx.raw.raw;
-                                    return `${d.title.substring(0, 20)}... | 觀看:${d.views} | 互動:${d.engRate.toFixed(2)}%`;
+                                    return `${d.title.substring(0, 30)}... | Views:${d.views} | Eng:${d.engRate.toFixed(2)}%`;
                                 }
                             }
                         }
@@ -592,7 +722,6 @@
                 }
             });
 
-            // 3. Timeline 分拆 Shorts 與 Video
             const timelineObj = {};
             globalData.forEach(d => {
                 const dateStr = `${d.date.getMonth() + 1}/${d.date.getDate()}`;
@@ -611,18 +740,18 @@
                     labels: sortedDates,
                     datasets: [
                         {
-                            label: 'Shorts 發布量',
+                            label: 'Shorts Uploads',
                             data: sortedDates.map(k => timelineObj[k].Short),
-                            borderColor: '#8b5cf6',
-                            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                            borderColor: '#FF8F73',
+                            backgroundColor: 'rgba(255, 143, 115, 0.2)',
                             fill: true,
                             tension: 0.3
                         },
                         {
-                            label: 'Video 發布量',
+                            label: 'Video Uploads',
                             data: sortedDates.map(k => timelineObj[k].Video),
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            borderColor: '#0052CC',
+                            backgroundColor: 'rgba(0, 82, 204, 0.2)',
                             fill: true,
                             tension: 0.3
                         }
@@ -634,23 +763,25 @@
 
         function sortData(col) {
             if (currentSortCol === col) {
-                currentSortDir *= -1; // 點擊相同欄位，切換升降冪
+                currentSortDir *= -1;
             } else {
                 currentSortCol = col;
-                currentSortDir = -1; // 預設降冪
+                currentSortDir = -1;
             }
             renderTable();
         }
 
         function renderTable() {
-            // 更新標題樣式與圖示
             ['date', 'type', 'title', 'dur', 'views', 'engRate'].forEach(col => {
                 const th = document.getElementById(`sort_${col}`).parentElement;
                 const span = document.getElementById(`sort_${col}`);
                 if (col === currentSortCol) {
-                    th.style.color = "white";
+                    th.style.background = "#ebecf0";
+                    th.style.color = "#172b4d";
                     span.innerText = currentSortDir === 1 ? '▲' : '▼';
+                    span.style.color = "#0052cc";
                 } else {
+                    th.style.background = "#f4f5f7";
                     th.style.color = "var(--text-muted)";
                     span.innerText = '';
                 }
@@ -659,7 +790,6 @@
             const tbody = document.querySelector('#dataTable tbody');
             tbody.innerHTML = '';
 
-            // 依照所選欄位與方向排序資料
             const sorted = [...globalData].sort((a, b) => {
                 let valA = a[currentSortCol];
                 let valB = b[currentSortCol];
@@ -677,15 +807,15 @@
             sorted.forEach(d => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                <td>${d.date.toLocaleDateString()}</td>
-                <td><span class="tag-${d.type.toLowerCase()}">${d.type}</span></td>
-                <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${d.title}">
-                    <a href="https://youtu.be/${d.id}" target="_blank" style="color:white;">${d.title}</a>
-                </td>
-                <td>${Math.floor(d.dur / 60)}:${(d.dur % 60).toString().padStart(2, '0')}</td>
-                <td>${d.views.toLocaleString()}</td>
-                <td style="color: #10b981; font-weight: bold;">${d.engRate.toFixed(2)}%</td>
-            `;
+            <td>${d.date.toLocaleDateString()}</td>
+            <td><span class="tag-${d.type.toLowerCase()}">${d.type}</span></td>
+            <td style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${d.title}">
+                <a href="https://youtu.be/${d.id}" target="_blank" style="color:#0052cc; text-decoration:none;">${d.title}</a>
+            </td>
+            <td>${Math.floor(d.dur / 60)}:${(d.dur % 60).toString().padStart(2, '0')}</td>
+            <td>${d.views.toLocaleString()}</td>
+            <td style="color: #172b4d; font-weight: 500;">${d.engRate.toFixed(2)}%</td>
+        `;
                 tbody.appendChild(tr);
             });
         }
@@ -693,7 +823,7 @@
         function downloadCSV() {
             if (!globalData.length) return;
             const BOM = "\uFEFF";
-            let csv = "ID,發布時間,類型,標題,長度(秒),觀看次數,按讚數,留言數,互動率(%)\n";
+            let csv = "ID,Published,Type,Title,Duration(s),Views,Likes,Comments,EngRate(%)\n";
             globalData.forEach(d => {
                 csv += `${d.id},${d.date.toISOString()},${d.type},"${d.title.replace(/"/g, '""')}",${d.dur},${d.views},${d.likes},${d.comments},${d.engRate.toFixed(2)}\n`;
             });
