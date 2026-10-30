@@ -2,7 +2,7 @@
 
 A comprehensive suite of tools to analyze YouTube channel strategies, growth metrics, and content performance using the official YouTube Data API v3. 
 
-This repository contains multiple versions of the analyzer, ranging from a simple Python script to a fully interactive HTML dashboard designed for non-technical users.
+This repository contains three tools: an interactive HTML dashboard designed for non-technical users, a Streamlit web app, and a simple Python script.
 
 ## Features
 
@@ -10,13 +10,16 @@ This repository contains multiple versions of the analyzer, ranging from a simpl
 - **Engagement Rate Analysis**: Calculates the engagement rate `(Likes + Comments) / Views` to identify high-potential content formats.
 - **Posting Strategy Visualization**: Charts revealing the channel's daily upload frequency for both Shorts and standard Videos.
 - **Social Media Detection**: Scans the channel's "About" description to automatically find links/mentions of Instagram, TikTok, Facebook, Threads, and X (Twitter).
+- **Video Details**: Shows each video's category, captions (CC), tags, description, and upload time (to the minute).
 - **CSV Export**: One-click download of all fetched video data (views, likes, comments, duration, engagement rate) for further spreadsheet analysis.
 
 ## Included Tools
 
-### 1. Advanced HTML Dashboard (`youtube_analyzer_advanced.html`) 🌟 **Recommended**
-The most feature-rich version. It is a standalone, local HTML file that runs entirely in your web browser. No Python installations required!
-- **How to use**: Just double-click the file to open it in Chrome/Safari/Edge. Paste your API key, type a channel handle (e.g., `@gaoweirenzhi`), and click Analyze.
+### 1. HTML Dashboard (`index.html`) 🌟 **Recommended**
+The most feature-rich version. It is a single HTML file that runs entirely in your web browser. No Python installations required!
+- **Online**: Open the repository's GitHub Pages site (served from `index.html`).
+- **Locally**: Double-click `index.html` to open it in Chrome/Safari/Edge.
+- **How to use**: Paste your API key, type a channel handle (e.g., `@gaoweirenzhi`), choose a timeframe (last 7, 30, or 90 days, or the latest 500 videos), and click **Run Integration**.
 
 ### 2. Streamlit Web App (`app.py`)
 A Python-based interactive dashboard built with Streamlit.
@@ -42,6 +45,8 @@ To use any of these tools, you need a free YouTube Data API v3 key:
 2. Create a new project.
 3. Search for "YouTube Data API v3" and enable it.
 4. Go to "Credentials", click "Create Credentials", and select "API key".
+
+**Protect your key**: The HTML dashboard uses your key directly in the browser. In the Google Cloud Console, restrict the key to the YouTube Data API v3, and limit it to your own website (HTTP referrer) if you use GitHub Pages.
 
 ## Limitations
 Due to the official YouTube Data API v3 restrictions:

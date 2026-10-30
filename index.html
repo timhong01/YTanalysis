@@ -674,6 +674,7 @@
             if (!key || !handle) return alert("請輸入 API Key 與頻道 ID / Please enter API Key and Channel ID");
 
             btn.disabled = true;
+            status.style.color = "#0052cc";
             document.getElementById('dashboard').style.display = 'none';
 
             try {
@@ -885,22 +886,26 @@
                 }
             });
 
+            // 以 YYYY-MM-DD 分組，避免不同年份的同一天被合併，字串排序即為時間順序
+            const pad = n => n.toString().padStart(2, '0');
             const timelineObj = {};
             globalData.forEach(d => {
-                const dateStr = `${d.date.getMonth() + 1}/${d.date.getDate()}`;
-                if (!timelineObj[dateStr]) timelineObj[dateStr] = { Short: 0, Video: 0 };
-                timelineObj[dateStr][d.type]++;
+                const dateKey = `${d.date.getFullYear()}-${pad(d.date.getMonth() + 1)}-${pad(d.date.getDate())}`;
+                if (!timelineObj[dateKey]) timelineObj[dateKey] = { Short: 0, Video: 0 };
+                timelineObj[dateKey][d.type]++;
             });
 
-            const sortedDates = Object.keys(timelineObj).sort((a, b) => {
-                const [m1, d1] = a.split('/'); const [m2, d2] = b.split('/');
-                if (m1 !== m2) return parseInt(m1) - parseInt(m2); return parseInt(d1) - parseInt(d2);
+            const sortedDates = Object.keys(timelineObj).sort();
+            const multiYear = sortedDates.length > 0 && sortedDates[0].slice(0, 4) !== sortedDates[sortedDates.length - 1].slice(0, 4);
+            const dateLabels = sortedDates.map(k => {
+                const [y, m, d] = k.split('-');
+                return multiYear ? `${y}/${parseInt(m)}/${parseInt(d)}` : `${parseInt(m)}/${parseInt(d)}`;
             });
 
             charts['timelineChart'] = new Chart(document.getElementById('timelineChart'), {
                 type: 'line',
                 data: {
-                    labels: sortedDates,
+                    labels: dateLabels,
                     datasets: [
                         {
                             label: 'Shorts Uploads',
@@ -968,28 +973,55 @@
                 return 0;
             });
 
+            const pad = n => n.toString().padStart(2, '0');
+            const addCell = (tr, text) => {
+                const td = document.createElement('td');
+                td.textContent = text;
+                tr.appendChild(td);
+                return td;
+            };
+            const addBadge = (tr, label, title, content) => {
+                const td = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.className = 'interactive-badge';
+                badge.textContent = label;
+                badge.addEventListener('click', () => openModal(title, content));
+                td.appendChild(badge);
+                tr.appendChild(td);
+            };
+
             sorted.forEach(d => {
-                const pad = n => n.toString().padStart(2, '0');
                 const dateStr = `${d.date.getFullYear()}/${pad(d.date.getMonth() + 1)}/${pad(d.date.getDate())} ${pad(d.date.getHours())}:${pad(d.date.getMinutes())}`;
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-            <td>${d.category}</td>
-            <td>${d.hasCC}</td>
-            <td>${dateStr}</td>
-            <td><span class="tag-${d.type.toLowerCase()}">${d.type}</span></td>
-            <td style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${d.title}">
-                <a href="https://youtu.be/${d.id}" target="_blank" style="color:#0052cc; text-decoration:none;">${d.title}</a>
-            </td>
-            <td>${Math.floor(d.dur / 60)}:${(d.dur % 60).toString().padStart(2, '0')}</td>
-            <td>${d.views.toLocaleString()}</td>
-            <td>
-                <span class="interactive-badge" onclick="openModal('Tags (${d.tags.length})', '${(d.tags.join(', ') || 'No tags').replace(/'/g, "\\'")}')">${d.tags.length} Tags</span>
-            </td>
-            <td>
-                <span class="interactive-badge" onclick="openModal('Description', \`${(d.description || 'No description').replace(/`/g, "\\`")}\`)">${d.description.length} Chars</span>
-            </td>
-            <td style="color: #172b4d; font-weight: 500;">${d.engRate.toFixed(2)}%</td>
-        `;
+
+                addCell(tr, d.category);
+                addCell(tr, d.hasCC);
+                addCell(tr, dateStr);
+
+                const typeTag = document.createElement('span');
+                typeTag.className = d.type === 'Short' ? 'tag-short' : 'tag-video';
+                typeTag.textContent = d.type;
+                addCell(tr, '').appendChild(typeTag);
+
+                const titleTd = addCell(tr, '');
+                titleTd.style.cssText = 'max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+                titleTd.title = d.title;
+                const link = document.createElement('a');
+                link.href = `https://youtu.be/${encodeURIComponent(d.id)}`;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.style.cssText = 'color:#0052cc; text-decoration:none;';
+                link.textContent = d.title;
+                titleTd.appendChild(link);
+
+                addCell(tr, `${Math.floor(d.dur / 60)}:${(d.dur % 60).toString().padStart(2, '0')}`);
+                addCell(tr, d.views.toLocaleString());
+                addBadge(tr, `${d.tags.length} Tags`, `Tags (${d.tags.length})`, d.tags.join(', ') || 'No tags');
+                addBadge(tr, `${d.description.length} Chars`, 'Description', d.description || 'No description');
+
+                const engTd = addCell(tr, `${d.engRate.toFixed(2)}%`);
+                engTd.style.cssText = 'color: #172b4d; font-weight: 500;';
+
                 tbody.appendChild(tr);
             });
         }
